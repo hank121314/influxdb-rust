@@ -7,9 +7,11 @@
 //! `name`, InfluxDB provides alongside query results.
 //!
 //! ```rust,no_run
+//! use std::borrow::Cow;
 //! use futures::prelude::*;
 //! use influxdb::{Client, Query};
 //! use serde::Deserialize;
+//!
 //!
 //! #[derive(Deserialize)]
 //! struct WeatherWithoutCityName {
@@ -48,11 +50,12 @@
 
 mod de;
 
-use surf::StatusCode;
+use reqwest::StatusCode;
 
 use serde::{de::DeserializeOwned, Deserialize};
 
 use crate::{Client, Error, Query, ReadQuery};
+use std::borrow::Cow;
 
 #[derive(Deserialize)]
 #[doc(hidden)]
@@ -147,36 +150,38 @@ impl Client {
             .client
             .get(url)
             .query(&parameters)
+            .build()
             .map_err(|err| Error::UrlConstructionError {
                 error: err.to_string(),
-            })?
-            .build();
+            })?;
 
-        let mut res = self
+        let res = self
             .client
-            .send(request)
+            .execute(request)
             .await
             .map_err(|err| Error::ConnectionError {
                 error: err.to_string(),
             })?;
 
         match res.status() {
-            StatusCode::Unauthorized => return Err(Error::AuthorizationError),
-            StatusCode::Forbidden => return Err(Error::AuthenticationError),
+            StatusCode::UNAUTHORIZED => return Err(Error::AuthorizationError),
+            StatusCode::FORBIDDEN => return Err(Error::AuthenticationError),
             _ => {}
         }
 
-        let body = res.body_bytes().await.map_err(|err| Error::ProtocolError {
+        let text = res.text().await.map_err(|err| Error::ProtocolError {
             error: err.to_string(),
         })?;
 
+        let body = Cow::from(text);
+
         // Try parsing InfluxDBs { "error": "error message here" }
-        if let Ok(error) = serde_json::from_slice::<_DatabaseError>(&body) {
+        if let Ok(error) = serde_json::from_slice::<_DatabaseError>(&body.as_bytes()) {
             return Err(Error::DatabaseError { error: error.error });
         }
 
         // Json has another structure, let's try actually parsing it to the type we're deserializing
-        serde_json::from_slice::<DatabaseQueryResult>(&body).map_err(|err| {
+        serde_json::from_slice::<DatabaseQueryResult>(&body.as_bytes()).map_err(|err| {
             Error::DeserializationError {
                 error: format!("serde error: {}", err),
             }

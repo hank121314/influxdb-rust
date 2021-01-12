@@ -12,7 +12,7 @@
 //! -   `async`/`await` support
 //! -   `#[derive(InfluxDbWriteable)]` Derive Macro for Writing / Reading into Structs
 //! -   `GROUP BY` support
-//! -   Tokio and async-std support (see example below) or [available backends](https://github.com/Empty2k12/influxdb-rust/blob/master/influxdb/Cargo.toml)
+//! -   Tokio support (see example below) or [available backends](https://github.com/Empty2k12/influxdb-rust/blob/master/influxdb/Cargo.toml)
 //!
 //! # Quickstart
 //!

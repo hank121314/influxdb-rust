@@ -12,7 +12,7 @@ use influxdb::{Client, Error, Query, Timestamp};
 /// INTEGRATION TEST
 ///
 /// This test case tests whether the InfluxDB server can be connected to and gathers info about it - tested with async_std
-#[async_std::test]
+#[tokio::test]
 #[cfg(not(tarpaulin_include))]
 async fn test_ping_influx_db_async_std() {
     let client = create_client("notusedhere");
@@ -46,7 +46,7 @@ async fn test_ping_influx_db_tokio() {
 /// INTEGRATION TEST
 ///
 /// This test case tests connection error
-#[async_std::test]
+#[tokio::test]
 #[cfg(not(tarpaulin_include))]
 async fn test_connection_error() {
     let test_name = "test_connection_error";
@@ -67,7 +67,7 @@ async fn test_connection_error() {
 /// INTEGRATION TEST
 ///
 /// This test case tests the Authentication
-#[async_std::test]
+#[tokio::test]
 #[cfg(not(tarpaulin_include))]
 async fn test_authed_write_and_read() {
     const TEST_NAME: &str = "test_authed_write_and_read";
@@ -115,7 +115,7 @@ async fn test_authed_write_and_read() {
 /// INTEGRATION TEST
 ///
 /// This test case tests the Authentication
-#[async_std::test]
+#[tokio::test]
 #[cfg(not(tarpaulin_include))]
 async fn test_wrong_authed_write_and_read() {
     const TEST_NAME: &str = "test_wrong_authed_write_and_read";
@@ -185,7 +185,7 @@ async fn test_wrong_authed_write_and_read() {
 /// INTEGRATION TEST
 ///
 /// This test case tests the Authentication
-#[async_std::test]
+#[tokio::test]
 #[cfg(not(tarpaulin_include))]
 async fn test_non_authed_write_and_read() {
     const TEST_NAME: &str = "test_non_authed_write_and_read";
@@ -240,7 +240,7 @@ async fn test_non_authed_write_and_read() {
 /// INTEGRATION TEST
 ///
 /// This integration tests that writing data and retrieving the data again is working
-#[async_std::test]
+#[tokio::test]
 #[cfg(not(tarpaulin_include))]
 async fn test_write_and_read_field() {
     const TEST_NAME: &str = "test_write_field";
@@ -273,7 +273,7 @@ async fn test_write_and_read_field() {
 /// INTEGRATION TEST
 ///
 /// This integration tests that writing data and retrieving the data again is working
-#[async_std::test]
+#[tokio::test]
 #[cfg(feature = "use-serde")]
 #[cfg(not(tarpaulin_include))]
 async fn test_write_and_read_option() {
@@ -335,7 +335,7 @@ async fn test_write_and_read_option() {
 ///
 /// This test case tests whether JSON can be decoded from a InfluxDB response and whether that JSON
 /// is equal to the data which was written to the database
-#[async_std::test]
+#[tokio::test]
 #[cfg(feature = "use-serde")]
 #[cfg(not(tarpaulin_include))]
 async fn test_json_query() {
@@ -387,7 +387,7 @@ async fn test_json_query() {
 ///
 /// This test case tests whether the response to a GROUP BY can be parsed by
 // deserialize_next_tagged into a tags struct
-#[async_std::test]
+#[tokio::test]
 #[cfg(feature = "use-serde")]
 #[cfg(not(tarpaulin_include))]
 async fn test_json_query_tagged() {
@@ -503,7 +503,7 @@ async fn test_json_query_vec() {
 /// INTEGRATION TEST
 ///
 /// This integration test tests whether using the wrong query method fails building the query
-#[async_std::test]
+#[tokio::test]
 #[cfg(feature = "use-serde")]
 #[cfg(not(tarpaulin_include))]
 async fn test_serde_multi_query() {
@@ -580,7 +580,7 @@ async fn test_serde_multi_query() {
 /// INTEGRATION TEST
 ///
 /// This integration test tests whether using the wrong query method fails building the query
-#[async_std::test]
+#[tokio::test]
 #[cfg(feature = "use-serde")]
 #[cfg(not(tarpaulin_include))]
 async fn test_wrong_query_errors() {
