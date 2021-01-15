@@ -50,12 +50,11 @@
 
 mod de;
 
-use reqwest::StatusCode;
-
 use serde::{de::DeserializeOwned, Deserialize};
 
 use crate::{Client, Error, Query, ReadQuery};
 use std::borrow::Cow;
+use reqwest::{Client as ReqwestClient, StatusCode};
 
 #[derive(Deserialize)]
 #[doc(hidden)]
@@ -146,8 +145,8 @@ impl Client {
         let url = &format!("{}/query", &self.url);
         let mut parameters = self.parameters.as_ref().clone();
         parameters.insert("q", read_query);
-        let request = self
-            .client
+        let client = ReqwestClient::new();
+        let request = client
             .get(url)
             .query(&parameters)
             .build()
@@ -155,8 +154,7 @@ impl Client {
                 error: err.to_string(),
             })?;
 
-        let res = self
-            .client
+        let res = client
             .execute(request)
             .await
             .map_err(|err| Error::ConnectionError {

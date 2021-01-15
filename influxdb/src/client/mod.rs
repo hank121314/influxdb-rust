@@ -27,7 +27,6 @@ use std::sync::Arc;
 pub struct Client {
     pub(crate) url: Arc<String>,
     pub(crate) parameters: Arc<HashMap<&'static str, String>>,
-    pub(crate) client: ReqwestClient,
 }
 
 impl Client {
@@ -54,8 +53,7 @@ impl Client {
         parameters.insert("db", database.into());
         Client {
             url: Arc::new(url.into()),
-            parameters: Arc::new(parameters),
-            client: ReqwestClient::new(),
+            parameters: Arc::new(parameters)
         }
     }
 
@@ -101,8 +99,8 @@ impl Client {
     /// Returns a tuple of build type and version number
     pub async fn ping(&self) -> Result<(String, String), Error> {
         let url = &format!("{}/ping", self.url);
-        let res = self
-            .client
+        let client = ReqwestClient::new();
+        let res = client
             .get(url)
             .send()
             .await
@@ -160,6 +158,7 @@ impl Client {
         Q: Query,
         &'q Q: Into<QueryTypes<'q>>,
     {
+        let client = ReqwestClient::new();
         let query = q.build().map_err(|err| Error::InvalidQueryError {
             error: err.to_string(),
         })?;
@@ -172,9 +171,9 @@ impl Client {
                 parameters.insert("q", read_query.clone());
 
                 if read_query.contains("SELECT") || read_query.contains("SHOW") {
-                    self.client.get(url).query(&parameters)
+                    client.get(url).query(&parameters)
                 } else {
-                    self.client.post(url).query(&parameters)
+                    client.post(url).query(&parameters)
                 }
             }
             QueryTypes::Write(write_query) => {
@@ -182,15 +181,14 @@ impl Client {
                 let mut parameters = self.parameters.as_ref().clone();
                 parameters.insert("precision", write_query.get_precision());
 
-                self.client.post(url).body(query.get()).query(&parameters)
+                client.post(url).body(query.get()).query(&parameters)
             }
         }.build();
 
         let request = request_builder.map_err(|err| Error::UrlConstructionError {
             error: err.to_string(),
         })?;
-        let res = self
-            .client
+        let res = client
             .execute(request)
             .await
             .map_err(|err| Error::ConnectionError {
