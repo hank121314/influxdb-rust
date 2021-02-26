@@ -1,5 +1,5 @@
 use futures::prelude::*;
-use influxdb::{Client, Error, Query};
+use influxdb::{ClientV2, Error, Query};
 use std::panic::{AssertUnwindSafe, UnwindSafe};
 
 #[allow(dead_code)]
@@ -14,11 +14,11 @@ pub fn assert_result_ok<A: std::fmt::Debug, B: std::fmt::Debug>(result: &Result<
 }
 
 #[cfg(not(tarpaulin_include))]
-pub fn create_client<T>(db_name: T) -> Client
+pub fn create_client<T>(db_name: T) -> ClientV2
 where
     T: Into<String>,
 {
-    Client::new("http://localhost:8086", db_name)
+    ClientV2::new("http://localhost:8086", "EjSkgHTJShSWWZmlfUr216-KgVPLMxLmDqEYrgbu66K6RV-q9DvIgGCBNP-sX83OQg3ASCw28Hy5UhIUC0Ygqw==", "ekoral", db_name)
 }
 
 #[cfg(not(tarpaulin_include))]

@@ -27,6 +27,7 @@ use std::sync::Arc;
 pub struct ClientV2 {
   pub(crate) url: Arc<String>,
   pub(crate) headers: Arc<HeaderMap<HeaderValue>>,
+  pub(crate) parameters: Arc<HashMap<&'static str, String>>,
 }
 
 impl ClientV2 {
@@ -42,29 +43,29 @@ impl ClientV2 {
     /// ```rust
     /// use influxdb::ClientV2;
     ///
-    /// let _client = ClientV2::new("http://localhost:8086", "testBucket", "test");
+    /// let _client = ClientV2::new("http://localhost:8086", "YOURAUTHTOKEN");
     /// ```
-    pub fn new<S1>(url: S1, bucket: &str, org: &str) -> Self
+    pub fn new<S1, S2, S3>(url: S1, token: &str, org: S2, bucket: S3) -> Self
       where
         S1: Into<String>,
+        S2: Into<String>,
+        S3: Into<String>,
     {
       let mut headers = HeaderMap::new();
-      headers.insert("bucket", HeaderValue::from_str(bucket).unwrap());
-      headers.insert("org", HeaderValue::from_str(org).unwrap());
+      let mut parameters = HashMap::<&str, String>::new();
+      parameters.insert("org", org.into());
+      parameters.insert("bucket", bucket.into());
+      headers.insert("Authorization", HeaderValue::from_str(&format!("Token {}", token)).unwrap());
       ClientV2 {
         url: Arc::new(url.into()),
-        headers: Arc::new(headers)
+        headers: Arc::new(headers),
+        parameters: Arc::new(parameters)
       }
     }
 
-    /// Returns the name of the organization the client is using
-    pub fn org_name(&self) -> &str {
-      self.get_header_by_name("org")
-    }
-
     /// Returns the name of the bucket the client is using
-    pub fn bucket_name(&self) -> &str {
-      self.get_header_by_name("bucket")
+    pub fn token(&self) -> &str {
+      self.get_header_by_name("Authorization")
     }
 
     fn get_header_by_name(&self, name: &str) -> &str {
@@ -153,18 +154,20 @@ impl ClientV2 {
       let request_builder = match q.into() {
         QueryTypes::Read(_) => {
           let read_query = query.get();
+          let headers = self.headers.as_ref().clone();
+          let parameters = self.parameters.as_ref().clone();
           let url = &format!("{}/query", &self.url);
 
           if read_query.contains("SELECT") || read_query.contains("SHOW") {
-            client.get(url)
+            client.get(url).headers(headers).query(&parameters)
           } else {
-            client.post(url)
+            client.post(url).headers(headers).query(&parameters)
           }
         }
         QueryTypes::Write(write_query) => {
           let url = &format!("{}/api/v2/write", &self.url);
           let headers = self.headers.as_ref().clone();
-          let mut parameters = HashMap::<&str, String>::new();
+          let mut parameters = self.parameters.as_ref().clone();
           parameters.insert("precision", write_query.get_precision());
 
           client.post(url).headers(headers).body(query.get()).query(&parameters)
@@ -213,9 +216,11 @@ mod tests {
 
   #[test]
   fn test_fn_database() {
-    let client = ClientV2::new("http://localhost:8068", "database", "org");
-    assert_eq!(client.bucket_name(), "database");
-    assert_eq!(client.org_name(), "org");
-    assert_eq!(client.database_url(), "http://localhost:8068");
+    let client = ClientV2::new("http://localhost:8068", "YOURAUTHTOKEN", "org", "bucket");
+    assert_eq!(client.token(), "Token YOURAUTHTOKEN");
+    let parameters = client.parameters;
+    assert_eq!(parameters.len(), 2);
+    assert_eq!(parameters.get("org").unwrap(), "org");
+    assert_eq!(parameters.get("bucket").unwrap(), "bucket");
   }
 }

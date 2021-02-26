@@ -52,7 +52,7 @@ mod de;
 
 use serde::{de::DeserializeOwned, Deserialize};
 
-use crate::{Client, Error, Query, ReadQuery};
+use crate::{Client, Error, Query, ReadQuery, ClientV2};
 use std::borrow::Cow;
 use reqwest::{Client as ReqwestClient, StatusCode};
 
@@ -148,6 +148,71 @@ impl Client {
         let client = ReqwestClient::new();
         let request = client
             .get(url)
+            .query(&parameters)
+            .build()
+            .map_err(|err| Error::UrlConstructionError {
+                error: err.to_string(),
+            })?;
+
+        let res = client
+            .execute(request)
+            .await
+            .map_err(|err| Error::ConnectionError {
+                error: err.to_string(),
+            })?;
+
+        match res.status() {
+            StatusCode::UNAUTHORIZED => return Err(Error::AuthorizationError),
+            StatusCode::FORBIDDEN => return Err(Error::AuthenticationError),
+            _ => {}
+        }
+
+        let text = res.text().await.map_err(|err| Error::ProtocolError {
+            error: err.to_string(),
+        })?;
+
+        let body = Cow::from(text);
+
+        // Try parsing InfluxDBs { "error": "error message here" }
+        if let Ok(error) = serde_json::from_slice::<_DatabaseError>(&body.as_bytes()) {
+            return Err(Error::DatabaseError { error: error.error });
+        }
+
+        // Json has another structure, let's try actually parsing it to the type we're deserializing
+        serde_json::from_slice::<DatabaseQueryResult>(&body.as_bytes()).map_err(|err| {
+            Error::DeserializationError {
+                error: format!("serde error: {}", err),
+            }
+        })
+    }
+}
+
+impl ClientV2 {
+    pub async fn json_query(&self, q: ReadQuery) -> Result<DatabaseQueryResult, Error> {
+        let query = q.build().map_err(|err| Error::InvalidQueryError {
+            error: format!("{}", err),
+        })?;
+
+        let read_query = query.get();
+        let read_query_lower = read_query.to_lowercase();
+
+        if !read_query_lower.contains("select") && !read_query_lower.contains("show") {
+            let error = Error::InvalidQueryError {
+                error: String::from(
+                    "Only SELECT and SHOW queries supported with JSON deserialization",
+                ),
+            };
+            return Err(error);
+        }
+
+        let url = &format!("{}/query", &self.url);
+        let headers = self.headers.as_ref().clone();
+        let mut parameters = self.parameters.as_ref().clone();
+        parameters.insert("q", read_query);
+        let client = ReqwestClient::new();
+        let request = client
+            .get(url)
+            .headers(headers)
             .query(&parameters)
             .build()
             .map_err(|err| Error::UrlConstructionError {
