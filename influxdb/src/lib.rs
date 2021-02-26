@@ -78,6 +78,7 @@ mod error;
 mod query;
 
 pub use client::Client;
+pub use client::client_v2::ClientV2;
 pub use error::Error;
 pub use query::{
     read_query::ReadQuery,

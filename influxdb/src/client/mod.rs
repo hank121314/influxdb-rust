@@ -14,6 +14,8 @@
 //!
 //! assert_eq!(client.database_name(), "test");
 //! ```
+pub mod client_v2;
+
 use reqwest::{Client as ReqwestClient, StatusCode};
 
 use crate::query::QueryTypes;
